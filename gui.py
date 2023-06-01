@@ -11,6 +11,7 @@ Gui - configures the main window and all the widgets.
 import wx
 import wx.glcanvas as wxcanvas
 from OpenGL import GL, GLUT
+import sys
 
 from names import Names
 from devices import Devices
@@ -18,6 +19,8 @@ from network import Network
 from monitors import Monitors
 from scanner import Scanner
 from parse import Parser
+from userint import UserInterface
+
 
 
 class MyGLCanvas(wxcanvas.GLCanvas):
@@ -77,7 +80,7 @@ class MyGLCanvas(wxcanvas.GLCanvas):
         size = self.GetClientSize()
         self.SetCurrent(self.context)
         GL.glDrawBuffer(GL.GL_BACK)
-        GL.glClearColor(1.0, 1.0, 1.0, 0.0)
+        GL.glClearColor(0.95, 0.89, 0.59, 0.0)
         GL.glViewport(0, 0, size.width, size.height)
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
@@ -209,7 +212,27 @@ class Gui(wx.Frame):
 
     This class provides a graphical user interface for the Logic Simulator and
     enables the user to change the circuit properties and run simulations.
+   def run_command(self):
+        #Run the simulation from scratch.
+        self.cycles_completed = 0
+        cycles = self.read_number(0, None)
+   def run_command(self):
+        #Run the simulation from scratch.
+        self.cycles_completed = 0
+        cycles = self.read_number(0, None)
 
+        if cycles is not None:  # if the number of cycles provided is valid
+            self.monitors.reset_monitors()
+            print("".join(["Running for ", str(cycfrom userint import UserInterfaceles), " cycles"]))
+            self.devices.cold_startup()
+            if self.run_network(cycles):
+                self.cycles_completed += cycles
+        if cycles is not None:  # if the number of cycles provided is valid
+            self.monitors.reset_monitors()
+            print("".join(["Running for ", str(cycles), " cycles"]))
+            self.devices.cold_startup()
+            if self.run_network(cycles):
+                self.cycles_completed += cycles
     Parameters
     ----------
     title: title of the window.
@@ -222,6 +245,9 @@ class Gui(wx.Frame):
                            control value.
 
     on_run_button(self, event): Event handler for when the user clicks the run
+                                button.
+    
+    on_continue_button(self, event): Event handler for when the user clicks the continue
                                 button.
 
     on_text_box(self, event): Event handler for when the user enters text.
@@ -246,6 +272,7 @@ class Gui(wx.Frame):
         self.text = wx.StaticText(self, wx.ID_ANY, "Cycles")
         self.spin = wx.SpinCtrl(self, wx.ID_ANY, "10")
         self.run_button = wx.Button(self, wx.ID_ANY, "Run")
+        self.continue_button = wx.Button(self, wx.ID_ANY, "Continue")
         self.text_box = wx.TextCtrl(self, wx.ID_ANY, "",
                                     style=wx.TE_PROCESS_ENTER)
 
@@ -253,6 +280,7 @@ class Gui(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_menu)
         self.spin.Bind(wx.EVT_SPINCTRL, self.on_spin)
         self.run_button.Bind(wx.EVT_BUTTON, self.on_run_button)
+        self.continue_button.Bind(wx.EVT_BUTTON, self.on_continue_button)
         self.text_box.Bind(wx.EVT_TEXT_ENTER, self.on_text_box)
 
         # Configure sizers for layout
@@ -265,10 +293,21 @@ class Gui(wx.Frame):
         side_sizer.Add(self.text, 1, wx.TOP, 10)
         side_sizer.Add(self.spin, 1, wx.ALL, 5)
         side_sizer.Add(self.run_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.continue_button, 1, wx.ALL, 5)
         side_sizer.Add(self.text_box, 1, wx.ALL, 5)
 
         self.SetSizeHints(600, 600)
         self.SetSizer(main_sizer)
+
+
+        #Added from userint
+        self.names = names
+        self.devices = devices
+        self.network = network
+        self.monitors = monitors
+
+        self.cycles_completed = 0
+
 
     def on_menu(self, event):
         """Handle the event when the user selects a menu item."""
@@ -287,11 +326,80 @@ class Gui(wx.Frame):
 
     def on_run_button(self, event):
         """Handle the event when the user clicks the run button."""
-        text = "Run button pressed."
+        text = "".join(["Run button pressed. Should run for:", str(self.spin.GetValue())])
         self.canvas.render(text)
+        self.run_command()
+
+    
+
+
+
+    def run_command(self):
+        #Run the simulation for scratch
+        self.cycles_completed = 0
+        cycles = self.spin.GetValue()
+        if cycles is not None:
+            self.monitors.reset_monitors()
+            print("".join(["Running for ", str(cycles), " cycles"]))
+            self.devices.cold_startup()
+            if self.run_network(cycles):
+                self.cycles_completed += cycles
+
+    def run_network(self, cycles):
+        #run simulation for set nmuber cycles
+        for _ in range(cycles):
+            if self.network.execute_network():
+                self.monitors.record_signals()
+            else:
+                print("Error! Network oscillation.")
+                return False
+        self.monitors.display_signals()
+        return True
+
+
+
+
+    def on_continue_button(self, event):
+        """Handle the event when the user clicks the continue button."""
+        text = "Continue button pressed."
+        self.canvas.render(text)
+
 
     def on_text_box(self, event):
         """Handle the event when the user enters text."""
         text_box_value = self.text_box.GetValue()
         text = "".join(["New text box value: ", text_box_value])
         self.canvas.render(text)
+        print(text_box_value)
+        if len(text_box_value) != 0:
+            if text_box_value[:2] == "r ":
+                try:
+                    userface.run_command()
+                    #set wheel and press run
+                except:
+                    print("failed") #print integer number of cycles (eg "r 10")
+            if text_box_value[:2] == "c ":
+                try:
+                    self.continue_command()
+                except:
+                    pass #print integer number of cycles (eg "c 10")
+            if text_box_value[:2] == "s ":
+                try:
+                    text_box_value[2:] #switch X to N
+                except:
+                    pass #expected arguments after "s"
+            if text_box_value[:2] == "m ":
+                try:
+                    text_box_value[2:] #set monitor on signal X
+                    
+                except:
+                    pass #signal not recognised
+            if text_box_value[:2] == "z ":
+                try:
+                    text_box_value[2:] #zap monitor on signal X
+                except:
+                    pass #signal not recognised
+            if text_box_value == "q":
+                sys.exit()
+
+

@@ -249,6 +249,21 @@ class Gui(wx.Frame):
     
     on_continue_button(self, event): Event handler for when the user clicks the continue
                                 button.
+    
+    on_switch_button1(self, event): Event handler for when the user clicks the switch1
+                                button.
+    
+    on_switch_button0(self, event): Event handler for when the user clicks the switch0
+                                button.
+    
+    on_set_monitor_button(self, event): Event handler for when the user clicks the set monitor
+                                button.
+                                
+    on_zap_monitor_button(self, event): Event handler for when the user clicks the zap monitor
+                                button.
+    
+    on_quit_button(self, event): Event handler for when the user clicks the quit
+                                button.
 
     on_text_box(self, event): Event handler for when the user enters text.
     """
@@ -273,14 +288,30 @@ class Gui(wx.Frame):
         self.spin = wx.SpinCtrl(self, wx.ID_ANY, "10")
         self.run_button = wx.Button(self, wx.ID_ANY, "Run")
         self.continue_button = wx.Button(self, wx.ID_ANY, "Continue")
+        self.switch1_button = wx.Button(self, wx.ID_ANY, "On Switch")
+        self.switch0_button = wx.Button(self, wx.ID_ANY, "Off Switch")
+        self.set_monitor_button = wx.Button(self, wx.ID_ANY, "Set Monitor")
+        self.zap_monitor_button = wx.Button(self, wx.ID_ANY, "Zap Monitor")
+        self.quit_button = wx.Button(self, wx.ID_ANY, "Quit")
         self.text_box = wx.TextCtrl(self, wx.ID_ANY, "",
                                     style=wx.TE_PROCESS_ENTER)
+        self.label = wx.StaticText(self, label = "Select Switch")
+        switch_names = ["a","b","c"]
+        self.combobox = wx.ComboBox(self, choices = switch_names)
+
+        
 
         # Bind events to widgets
         self.Bind(wx.EVT_MENU, self.on_menu)
         self.spin.Bind(wx.EVT_SPINCTRL, self.on_spin)
         self.run_button.Bind(wx.EVT_BUTTON, self.on_run_button)
         self.continue_button.Bind(wx.EVT_BUTTON, self.on_continue_button)
+        self.combobox.Bind(wx.EVT_COMBOBOX, self.on_combobox)
+        self.switch1_button.Bind(wx.EVT_BUTTON, self.on_switch1_button)
+        self.switch0_button.Bind(wx.EVT_BUTTON, self.on_switch0_button)
+        self.set_monitor_button.Bind(wx.EVT_BUTTON, self.on_set_monitor_button)
+        self.zap_monitor_button.Bind(wx.EVT_BUTTON, self.on_zap_monitor_button)
+        self.quit_button.Bind(wx.EVT_BUTTON, self.on_quit_button)
         self.text_box.Bind(wx.EVT_TEXT_ENTER, self.on_text_box)
 
         # Configure sizers for layout
@@ -294,6 +325,13 @@ class Gui(wx.Frame):
         side_sizer.Add(self.spin, 1, wx.ALL, 5)
         side_sizer.Add(self.run_button, 1, wx.ALL, 5)
         side_sizer.Add(self.continue_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.label, 1, wx.ALL, 5)
+        side_sizer.Add(self.combobox, 1, wx.ALL, 5)
+        side_sizer.Add(self.switch1_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.switch0_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.set_monitor_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.zap_monitor_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.quit_button, 1, wx.ALL, 5)
         side_sizer.Add(self.text_box, 1, wx.ALL, 5)
 
         self.SetSizeHints(600, 600)
@@ -305,8 +343,8 @@ class Gui(wx.Frame):
         self.devices = devices
         self.network = network
         self.monitors = monitors
-
         self.cycles_completed = 0
+        self.switch_id = None
 
 
     def on_menu(self, event):
@@ -329,10 +367,6 @@ class Gui(wx.Frame):
         text = "".join(["Run button pressed. Should run for:", str(self.spin.GetValue())])
         self.canvas.render(text)
         self.run_command()
-
-    
-
-
 
     def run_command(self):
         #Run the simulation for scratch
@@ -357,49 +391,81 @@ class Gui(wx.Frame):
         return True
 
 
-
-
     def on_continue_button(self, event):
         """Handle the event when the user clicks the continue button."""
         text = "Continue button pressed."
         self.canvas.render(text)
+        self.continue_command()
+    
+    def continue_command(self):
+        #Continue a previously run simulation
+        cycles = self.spin.GetValue()
+        if cycles is not None:
+            if self.cycles_completed == 0:
+                print("Error! Nothing to contiue")
+            elif self.run_network(cycles):
+                self.cycles_completed += cycles
+                print(" ".join(["Continuing for", str(cycles), "cycles.",
+                                "Total:", str(self.cycles_completed)]))
 
+
+    def on_switch1_button(self, event):
+        """Handle the event when the user clicks the switch1 button."""
+        text = "On switch button pressed."
+        self.canvas.render(text)
+        self.switch_command(1)
+    
+    def on_switch0_button(self, event):
+        """Handle the event when the user clicks the switch0 button."""
+        text = "Off switch button pressed."
+        self.canvas.render(text)
+        self.switch_command(0)
+    
+    def switch_command(self, state):
+        #set the specified switch to the specified signal level
+        if self.switch_id == None:
+            print("Error, please select a switch")
+        else:
+            if self.devices is None:
+                print("There are no devices in your circuit???")
+            elif self.devices.set_switch(self.switch_id, state):
+                print("successfully set switch")
+            else:
+                print("Error! Invalid Switch.")
+    
+
+    
+    def on_combobox(self, event):
+        """Handle the event when the user selects a switch."""
+        self.switch_id = self.combobox.GetValue()
+        text = "".join(["New switch selection: ", self.switch_id])
+        self.canvas.render(text)
+        print(self.switch_id)
+
+
+    def on_set_monitor_button(self, event):
+        """Handle the event when the user clicks the set_monitor button."""
+        text = "Set Monitor button pressed."
+        self.canvas.render(text)
+        self.set_monitor_command()
+
+    def on_zap_monitor_button(self, event):
+        """Handle the event when the user clicks the zap_monitor button."""
+        text = "zap_monitor button pressed."
+        self.canvas.render(text)
+        self.zap_monitor_command()
+
+    def on_quit_button(self, event):
+        """Handle the event when the user clicks the quit button."""
+        text = "quit button pressed."
+        self.canvas.render(text)
+        sys.exit()
 
     def on_text_box(self, event):
         """Handle the event when the user enters text."""
         text_box_value = self.text_box.GetValue()
-        text = "".join(["New text box value: ", text_box_value])
+        text = "".join(["New textbox value: ", text_box_value])
         self.canvas.render(text)
         print(text_box_value)
-        if len(text_box_value) != 0:
-            if text_box_value[:2] == "r ":
-                try:
-                    userface.run_command()
-                    #set wheel and press run
-                except:
-                    print("failed") #print integer number of cycles (eg "r 10")
-            if text_box_value[:2] == "c ":
-                try:
-                    self.continue_command()
-                except:
-                    pass #print integer number of cycles (eg "c 10")
-            if text_box_value[:2] == "s ":
-                try:
-                    text_box_value[2:] #switch X to N
-                except:
-                    pass #expected arguments after "s"
-            if text_box_value[:2] == "m ":
-                try:
-                    text_box_value[2:] #set monitor on signal X
-                    
-                except:
-                    pass #signal not recognised
-            if text_box_value[:2] == "z ":
-                try:
-                    text_box_value[2:] #zap monitor on signal X
-                except:
-                    pass #signal not recognised
-            if text_box_value == "q":
-                sys.exit()
 
 

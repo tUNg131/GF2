@@ -264,8 +264,6 @@ class Gui(wx.Frame):
     
     on_quit_button(self, event): Event handler for when the user clicks the quit
                                 button.
-
-    on_text_box(self, event): Event handler for when the user enters text.
     """
 
     def __init__(self, title, path, names, devices, network, monitors):
@@ -273,6 +271,7 @@ class Gui(wx.Frame):
         super().__init__(parent=None, title=title, size=(800, 600))
 
         # Configure the file menu
+
         fileMenu = wx.Menu()
         menuBar = wx.MenuBar()
         fileMenu.Append(wx.ID_ABOUT, "&About")
@@ -284,55 +283,103 @@ class Gui(wx.Frame):
         self.canvas = MyGLCanvas(self, devices, monitors)
 
         # Configure the widgets
-        self.text = wx.StaticText(self, wx.ID_ANY, "Cycles")
+        self.cyclestext = wx.StaticText(self, wx.ID_ANY, "Number of Cycles")
         self.spin = wx.SpinCtrl(self, wx.ID_ANY, "10")
         self.run_button = wx.Button(self, wx.ID_ANY, "Run")
         self.continue_button = wx.Button(self, wx.ID_ANY, "Continue")
-        self.switch1_button = wx.Button(self, wx.ID_ANY, "On Switch")
-        self.switch0_button = wx.Button(self, wx.ID_ANY, "Off Switch")
-        self.set_monitor_button = wx.Button(self, wx.ID_ANY, "Set Monitor")
-        self.zap_monitor_button = wx.Button(self, wx.ID_ANY, "Zap Monitor")
+        self.switch1_button = wx.Button(self, wx.ID_ANY, "On/Off")
+        self.set_monitor_button = wx.Button(self, wx.ID_ANY, "Monitor")
+        self.zap_monitor_button = wx.Button(self, wx.ID_ANY, "Zap")
+        self.help_button = wx.Button(self, wx.ID_ANY, "Help")
         self.quit_button = wx.Button(self, wx.ID_ANY, "Quit")
-        self.text_box = wx.TextCtrl(self, wx.ID_ANY, "",
-                                    style=wx.TE_PROCESS_ENTER)
-        self.label = wx.StaticText(self, label = "Select Switch")
-        switch_names = ["a","b","c"]
-        self.combobox = wx.ComboBox(self, choices = switch_names)
 
-        
+        self.switext = wx.StaticText(self, label = "Switch")
+        switch_names = ["swa","swb","swc"]
+        self.swicombobox = wx.ComboBox(self, choices = switch_names)
+
+        self.sigtext = wx.StaticText(self, label = "Signal")
+        signal_names = ["siga","sigb","sigc"]
+        self.sigcombobox = wx.ComboBox(self, choices = signal_names)
+
+        self.montext = wx.StaticText(self, label = "Monitor")
+        monitor_names = ["mona","monb","monc"]
+        self.moncombobox = wx.ComboBox(self, choices = monitor_names)
+
+
 
         # Bind events to widgets
         self.Bind(wx.EVT_MENU, self.on_menu)
         self.spin.Bind(wx.EVT_SPINCTRL, self.on_spin)
         self.run_button.Bind(wx.EVT_BUTTON, self.on_run_button)
         self.continue_button.Bind(wx.EVT_BUTTON, self.on_continue_button)
-        self.combobox.Bind(wx.EVT_COMBOBOX, self.on_combobox)
+        self.swicombobox.Bind(wx.EVT_COMBOBOX, self.on_swicombobox)
+        self.sigcombobox.Bind(wx.EVT_COMBOBOX, self.on_sigcombobox)
+        self.moncombobox.Bind(wx.EVT_COMBOBOX, self.on_moncombobox)
         self.switch1_button.Bind(wx.EVT_BUTTON, self.on_switch1_button)
-        self.switch0_button.Bind(wx.EVT_BUTTON, self.on_switch0_button)
         self.set_monitor_button.Bind(wx.EVT_BUTTON, self.on_set_monitor_button)
         self.zap_monitor_button.Bind(wx.EVT_BUTTON, self.on_zap_monitor_button)
         self.quit_button.Bind(wx.EVT_BUTTON, self.on_quit_button)
-        self.text_box.Bind(wx.EVT_TEXT_ENTER, self.on_text_box)
 
         # Configure sizers for layout
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
         side_sizer = wx.BoxSizer(wx.VERTICAL)
+        rc_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        cycle_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sim_sizer = wx.StaticBoxSizer(wx.StaticBox(self, id=wx.ID_ANY, label='Simulation'), wx.VERTICAL)
+        #swi_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        #sig_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        #mon_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sm_sizer = wx.StaticBoxSizer(wx.StaticBox(self, id=wx.ID_ANY, label='Switches and Monitors'), wx.VERTICAL)
+        smgrid_sizer = wx.FlexGridSizer(rows=3,cols=3,vgap=1,hgap=5)
 
         main_sizer.Add(self.canvas, 5, wx.EXPAND | wx.ALL, 5)
         main_sizer.Add(side_sizer, 1, wx.ALL, 5)
 
-        side_sizer.Add(self.text, 1, wx.TOP, 10)
-        side_sizer.Add(self.spin, 1, wx.ALL, 5)
-        side_sizer.Add(self.run_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.continue_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.label, 1, wx.ALL, 5)
-        side_sizer.Add(self.combobox, 1, wx.ALL, 5)
-        side_sizer.Add(self.switch1_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.switch0_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.set_monitor_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.zap_monitor_button, 1, wx.ALL, 5)
+        #side_sizer.Add(self.simtext, 1, wx.TOP, 10)
+        #sim_sizer.Add(cycle_sizer,1, wx.ALL, 5)
+        
+        sim_sizer.Add(cycle_sizer,1,wx.ALL,5)
+        sim_sizer.Add(rc_sizer,1,wx.ALL,5)
+
+        #side_sizer.Add(self.cyclestext, 1, wx.TOP, 10)
+        cycle_sizer.Add(self.cyclestext, 1, wx.ALL, 5)
+        cycle_sizer.Add(self.spin, 1, wx.ALL, 5)
+        #side_sizer.Add(cycle_sizer,1, wx.ALL, 5)
+
+        rc_sizer.Add(self.run_button, 1, wx.ALL, 5)
+        rc_sizer.Add(self.continue_button, 1, wx.ALL, 5)
+        side_sizer.Add(sim_sizer,1,wx.ALL,5)
+        #side_sizer.Add(rc_sizer,1,wx.ALL,5)
+
+        """
+        swi_sizer.Add(self.switext, 1, wx.ALL, 5)
+        swi_sizer.Add(self.swicombobox, 1, wx.ALL, 5)
+        swi_sizer.Add(self.switch1_button, 1, wx.ALL, 5)
+        sm_sizer.Add(swi_sizer,1,wx.ALL,5)
+
+        sig_sizer.Add(self.sigtext, 1, wx.ALL, 5)
+        sig_sizer.Add(self.sigcombobox, 1, wx.ALL, 5)
+        sig_sizer.Add(self.set_monitor_button, 1, wx.ALL, 5)
+        sm_sizer.Add(sig_sizer,1,wx.ALL,5)
+
+        mon_sizer.Add(self.montext, 1, wx.ALL, 5)
+        mon_sizer.Add(self.moncombobox, 1, wx.ALL, 5)
+        mon_sizer.Add(self.zap_monitor_button, 1, wx.ALL, 5)
+        sm_sizer.Add(mon_sizer,1,wx.ALL,5)
+
+        side_sizer.Add(sm_sizer,1,wx.ALL,5)
+        """
+
+        
+        smgrid_sizer.AddMany([self.switext, self.swicombobox, self.switch1_button,
+                          self.sigtext, self.sigcombobox, self.set_monitor_button,
+                          self.montext, self.moncombobox, self.zap_monitor_button])
+        #side_sizer.Add(smgrid_sizer,1,wx.ALL,5)
+        sm_sizer.Add(smgrid_sizer,1,wx.ALL,5)
+        side_sizer.Add(sm_sizer,1,wx.ALL,5)
+
+        side_sizer.Add(self.help_button, 1, wx.ALL, 5)
         side_sizer.Add(self.quit_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.text_box, 1, wx.ALL, 5)
 
         self.SetSizeHints(600, 600)
         self.SetSizer(main_sizer)
@@ -352,10 +399,14 @@ class Gui(wx.Frame):
         Id = event.GetId()
         if Id == wx.ID_EXIT:
             self.Close(True)
-        if Id == wx.ID_ABOUT:
-            wx.MessageBox("Logic Simulator\nCreated by Mojisola Agboola\n2017",
-                          "About Logsim", wx.ICON_INFORMATION | wx.OK)
+        if Id == wx.ID_About:
+            wx.MessageBox("Select the number of cycles then either\nrun a new simulation or continue\nthe current simulation.",
+                          "Running Simmulations", wx.ICON_INFORMATION | wx.OK)
+        if Id == wx.ID_Switches_Monitors:
+            wx.MessageBox("To alter a switch's state, select it from\nthe drop-down menu and toggle the On/Off button.\nTo add a monitor, select a signal from the drop-down\nmenu and press the Monitor button.\nTo delete a monitor, select a monitor from the\ndrop-down menu and press the zap button.",
+                          "Running Simmulations", wx.ICON_INFORMATION | wx.OK)
 
+        
     def on_spin(self, event):
         """Handle the event when the user changes the spin control value."""
         spin_value = self.spin.GetValue()
@@ -414,12 +465,7 @@ class Gui(wx.Frame):
         text = "On switch button pressed."
         self.canvas.render(text)
         self.switch_command(1)
-    
-    def on_switch0_button(self, event):
-        """Handle the event when the user clicks the switch0 button."""
-        text = "Off switch button pressed."
-        self.canvas.render(text)
-        self.switch_command(0)
+
     
     def switch_command(self, state):
         #set the specified switch to the specified signal level
@@ -435,12 +481,26 @@ class Gui(wx.Frame):
     
 
     
-    def on_combobox(self, event):
+    def on_swicombobox(self, event):
         """Handle the event when the user selects a switch."""
-        self.switch_id = self.combobox.GetValue()
+        self.switch_id = self.swicombobox.GetValue()
         text = "".join(["New switch selection: ", self.switch_id])
         self.canvas.render(text)
         print(self.switch_id)
+    
+    def on_sigcombobox(self, event):
+        """Handle the event when the user selects a signal."""
+        self.signal_id = self.sigcombobox.GetValue()
+        text = "".join(["New signal selection: ", self.signal_id])
+        self.canvas.render(text)
+        print(self.signal_id)
+    
+    def on_moncombobox(self, event):
+        """Handle the event when the user selects a monitor."""
+        self.monitor_id = self.moncombobox.GetValue()
+        text = "".join(["New monitor selection: ", self.monitor_id])
+        self.canvas.render(text)
+        print(self.monitor_id)
 
 
     def on_set_monitor_button(self, event):
@@ -460,12 +520,3 @@ class Gui(wx.Frame):
         text = "quit button pressed."
         self.canvas.render(text)
         sys.exit()
-
-    def on_text_box(self, event):
-        """Handle the event when the user enters text."""
-        text_box_value = self.text_box.GetValue()
-        text = "".join(["New textbox value: ", text_box_value])
-        self.canvas.render(text)
-        print(text_box_value)
-
-

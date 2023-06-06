@@ -8,117 +8,314 @@ Classes
 -------
 Parser - parses the definition file and builds the logic network.
 """
-
 import itertools
-from scanner import Symbol
+
+from scanner import Scanner
+
+class ParsingError(Exception):
+  def __init__(self, message, sym=None):
+    self.message = message
+    self.sym = sym
 
 
 class Parser:
 
-    """Parse the definition file and build the logic network.
+  """Parse the definition file and build the logic network.
 
-    The parser deals with error handling. It analyses the syntactic and
-    semantic correctness of the symbols it receives from the scanner, and
-    then builds the logic network. If there are errors in the definition file,
-    the parser detects this and tries to recover from it, giving helpful
-    error messages.
+  The parser deals with error handling. It analyses the syntactic and
+  semantic correctness of the symbols it receives from the scanner, and
+  then builds the logic network. If there are errors in the definition file,
+  the parser detects this and tries to recover from it, giving helpful
+  error messages.
 
-    Parameters
-    ----------
-    names: instance of the names.Names() class.
-    devices: instance of the devices.Devices() class.
-    network: instance of the network.Network() class.
-    monitors: instance of the monitors.Monitors() class.
-    scanner: instance of the scanner.Scanner() class.
+  Parameters
+  ----------
+  names: instance of the names.Names() class.
+  devices: instance of the devices.Devices() class.
+  network: instance of the network.Network() class.
+  monitors: instance of the monitors.Monitors() class.
+  scanner: instance of the scanner.Scanner() class.
 
-    Public methods
-    --------------
-    parse_network(self): Parses the circuit definition file.
-    """
+  Public methods
+  --------------
+  parse_network(self): Parses the circuit definition file.
+  """
 
-    def __init__(self, names, devices, network, monitors, scanner):
-        """Initialise constants."""
-        self._names = names
-        self._devices = devices
-        self._network = network
-        self._monitors = monitors
-        self._scanner = scanner
+  def __init__(self, names, devices, network, monitors, scanner):
+    """Initialise constants."""
+    self.__names = names
+    self.__devices = devices
+    self.__network = network
+    self.__monitors = monitors
+    self.__scanner: Scanner = scanner
 
-    def parse_network(self):
-        """Parse the circuit definition file."""
+  def parse_network(self):
+    """Parse the circuit definition file."""
+    line_count = 1
+    try:
+      while True:
+        sym = self.__scanner.get_symbol()
 
-        device_id = itertools.count(0)
+        if sym.type == Scanner.EOF:
+          break
 
-        symbols = []
-        EOF_flag = False
-        while not EOF_flag:
-            while True:
-                sym = self._scanner.get_symbol()
+        if sym.type == Scanner.AND:
+          self._parse_AND()
+        elif sym.type == Scanner.NAND:
+          self._parse_NAND()
+        elif sym.type == Scanner.OR:
+          self._parse_OR()
+        elif sym.type == Scanner.NOR:
+          self._parse_NOR()
+        elif sym.type == Scanner.XOR:
+          self._parse_XOR()
+        elif sym.type == Scanner.CLOCK:
+          self._parse_CLOCK()
+        elif sym.type == Scanner.DTYPE:
+          self._parse_DTYPE()
+        elif sym.type == Scanner.SWITCH:
+          self._parse_SWITCH()
+        elif sym.type == Scanner.MONITOR:
+          self._parse_monitor()
+        elif sym.type == Scanner.NAME:
+          self._parse_connection(sym)
 
-                if sym.type in (Symbol.NL, Symbol.EOF):
-                    EOF_flag = True
-                    break
-                symbols.append(sym)
+        line_count += 1
+    except ParsingError as e:
+      print(e.message)
+      print()
+      print(f"{line_count} ", self.__scanner.get_line(line_count))
+      if e.sym:
+        print(" "*len(f"{line_count} "), " " * e.sym.loc + "^")
+      return False
+    return True
 
-            first = symbols[0]
-            if first.type == Symbol.NAME:
-                if len(symbols) != 3:
-                    raise RuntimeError
+  def multiple(parse):
+    def wrapper(self, *args, **kwargs):
+      parse(self, *args, **kwargs)
 
-                if symbols[1].type != Symbol.EQUALS:
-                    raise RuntimeError
+      while True:
+        sym = self.__scanner.get_symbol()
+        if sym.type == Scanner.EOL:
+          break
 
-                if symbols[2].type != Symbol.NAME:
-                    raise RuntimeError
-                
-                first_device_id, first_port_id = self._devices.get_signal_ids(
-                    self._names.get_name_string(first.id))
-                
-                second = symbols[2]
-                second_device_id, second_port_id = self._devices.get_signal_ids(
-                    self._names.get_name_string(second.id))
+        # ,
+        if sym.type != Scanner.COMMA:
+          raise ParsingError("Expecting ','", sym=sym)
 
-                self._network.make_connection(
-                    first_device_id, first_port_id, second_device_id, second_port_id)
-            elif first.type == Symbol.DEF:
-                expecting_comma = False
-                for sym in symbols[1:]:
-                    if expecting_comma:
-                        if sym.type != Symbol.COMMA:
-                            raise RuntimeError("Expecting comma")
-                        expecting_comma = False
-                        continue
+        parse(self, *args, **kwargs)
+    return wrapper
 
-                    if first.type == Symbol.AND:
-                        self._devices.make_gate(next(device_id), self._devices.AND, sym.data)
-                    elif first.type == Symbol.NAND:
-                        self._devices.make_gate(next(device_id), self._devices.NAND, sym.data)
-                    elif first.type == Symbol.OR:
-                        self._devices.make_gate(next(device_id), self._devices.OR, sym.data)
-                    elif first.type == Symbol.NOR:
-                        self._devices.make_gate(next(device_id), self._devices.NOR, sym.data)
-                    elif first.type == Symbol.XOR:
-                        if first.data != 2:
-                            raise RuntimeError
-                        self._devices.make_gate(next(device_id), self._devices.XOR, 2)
-                    elif first.type == Symbol.CLK:
-                        # Clock_half_period is an integer > 0
-                        if not isinstance(first.data, int) or first.data <= 0:
-                            raise RuntimeError
-                        self._devices.make_clock(next(device_id), self._devices.CLOCK, first.data)
-                    elif first.type == Symbol.SW:
-                        self._devices.make_switch(next(device_id), self._devices.SWITCH, bool(first.data))
-                    elif first.type == Symbol.DTYPE:
-                        self._devices.make_d_type(next(device_id))
-                    else:
-                        raise RuntimeError
-                if not expecting_comma:
-                    raise RuntimeError("end of line has to expect comma")
-            elif first.type == Symbol.MONITOR:
-                pass
-            symbols = []
+  def _parse_identifier(self):
+    sym = self.__scanner.get_symbol()
+    if sym.type != Scanner.NAME:
+      raise ParsingError(f"Expecting user-defined name", sym=sym)
+    return sym.id
 
-        # For now just return True, so that userint and gui can run in the
-        # skeleton code. When complete, should return False when there are
-        # errors in the circuit definition file.
-        return True
+  def _parse_output(self):
+    device_id = self._parse_identifier()
+    port_id = None
+
+    device = self.__devices.get_device(device_id)
+    if device is None:
+      raise ParsingError("Undeclared device")
+
+    if device.device_kind == self.__devices.D_TYPE:
+      self._parse_dot()
+      port_id = self._parse_identifier()
+
+    return device_id, port_id
+
+  def _parse_open_bracket(self):
+    sym = self.__scanner.get_symbol()
+    if sym.type != Scanner.OPEN:
+      raise ParsingError("Expecting open bracket", sym=sym)
+
+  def _parse_close_bracket(self):
+    sym = self.__scanner.get_symbol()
+    if sym.type != Scanner.CLOSE:
+      raise ParsingError("Expecting close bracket", sym=sym)
+
+  def _parse_dot(self):
+    sym = self.__scanner.get_symbol()
+    if sym.type != Scanner.DOT:
+      raise ParsingError("Expecting '.'", sym=sym)
+
+  def _parse_gate(self, **kwargs):
+    device_id = self._parse_identifier()
+
+    # Default to XOR: 2 inputs
+    no_of_inputs = 2
+
+    if kwargs["device_kind"] != self.__devices.XOR:
+      self._parse_open_bracket()
+
+      class InvalidNoOfInputs(ValueError): pass
+      try:
+        # no_of_inputs
+        sym = self.__scanner.get_symbol()
+        if sym.type != Scanner.NUMBER:
+          raise InvalidNoOfInputs
+        
+        number = self.__names.get_name_string(sym.id)
+
+        if number[0] == "0":
+          raise InvalidNoOfInputs
+
+        no_of_inputs = int(number)
+
+        if no_of_inputs > 16 or no_of_inputs < 1:
+          raise ParsingError("Expecting a number from 1-16", sym=sym)
+      except InvalidNoOfInputs:
+        raise ParsingError("Expecting a number > 0", sym=sym)
+
+      self._parse_close_bracket()
+
+    kwargs.update(dict(device_id=device_id, no_of_inputs=no_of_inputs))
+
+    self.__devices.make_gate(**kwargs)
+
+  @multiple
+  def _parse_AND(self):
+    self._parse_gate(device_kind=self.__devices.AND)
+
+  @multiple
+  def _parse_OR(self):
+    self._parse_gate(device_kind=self.__devices.OR)
+
+  @multiple
+  def _parse_NAND(self):
+    self._parse_gate(device_kind=self.__devices.NAND)
+
+  @multiple
+  def _parse_NOR(self):
+    self._parse_gate(device_kind=self.__devices.NOR)
+
+  @multiple
+  def _parse_XOR(self):
+    self._parse_gate(device_kind=self.__devices.XOR)
+
+  @multiple
+  def _parse_CLOCK(self):
+    device_id = self._parse_identifier()
+
+    self._parse_open_bracket()
+
+    class InvalidHalfPeriod(ValueError): pass
+
+    try:
+      # n
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.NUMBER:
+        raise InvalidHalfPeriod
+      
+      name_string = self.__names.get_name_string(sym.id)
+
+      if name_string[0] == "0":
+        raise InvalidHalfPeriod
+
+      clock_half_period = int(name_string)
+
+      if clock_half_period < 1:
+        raise InvalidHalfPeriod
+
+    except InvalidHalfPeriod:
+      raise ParsingError("Expecting a number > 0", sym=sym)
+
+    self._parse_close_bracket()
+
+    self.__devices.make_clock(device_id=device_id, clock_half_period=clock_half_period)
+
+  @multiple
+  def _parse_SWITCH(self):
+    device_id = self._parse_identifier()
+
+    self._parse_open_bracket()
+
+    class InvalidState(ValueError): pass
+
+    try:
+      # initial state
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.NUMBER:
+        raise InvalidState
+      
+      initial_state = int(self.__names.get_name_string(sym.id))
+
+      if initial_state not in [0, 1]:
+        raise InvalidState
+
+    except InvalidState:
+      raise ParsingError("Expecting 0 or 1", sym=sym)
+
+    self._parse_close_bracket()
+
+    self.__devices.make_switch(device_id=device_id,
+                               initial_state=initial_state)
+
+  @multiple
+  def _parse_DTYPE(self):
+    device_id = self._parse_identifier()
+
+    self.__devices.make_dtype(device_id=device_id)
+
+  @multiple
+  def _parse_monitor(self):
+    device_id, output_id = self._parse_output()
+
+    error_code = self.__monitors.make_monitor(device_id=device_id,
+                                              output_id=output_id)
+
+    if error_code == self.__network.DEVICE_ABSENT:
+      raise ParsingError("Undeclared device")
+    elif error_code == self.__monitors.NOT_OUTPUT:
+      raise ParsingError("Not monitoring output")
+    elif error_code == self.__monitors.MONITOR_PRESENT:
+      raise ParsingError("Monitor present")
+
+  def _parse_connection(self, sym):
+    args = [sym.id, None, None, None]
+
+    def parse_right():
+      # second_device
+      args[2] = self._parse_identifier()
+
+      sym = self.__scanner.get_symbol()
+
+      if sym.type == Scanner.EOL:
+        return
+
+      if sym.type != Scanner.DOT:
+        raise ParsingError("Expecting '.'", sym=sym)
+
+      # second_port_id
+      args[3] = self._parse_identifier()
+
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.EOL:
+        raise ParsingError("Expecting EOL", sym=sym)
+
+    sym = self.__scanner.get_symbol()
+    if sym.type == Scanner.EQUALS:
+      parse_right()
+    elif sym.type == Scanner.DOT:
+      # first_port
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.NAME:
+        raise ParsingError("Expecting port name", sym=sym)
+
+      args[1] = sym.id
+
+      # =
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.EQUALS:
+        raise ParsingError("Expecting '='", sym=sym)
+
+      parse_right()
+    else:
+      raise ParsingError("Expecting . or =", sym=sym)
+
+    error_code = self.__network.make_connection(*args)
+
+    if error_code != self.__network.NO_ERROR:
+      raise ParsingError("Network error")

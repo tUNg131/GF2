@@ -345,6 +345,25 @@ class Network:
                     device.outputs[None] = self.devices.RISING
             device.clock_counter += 1
 
+    def update_siggens(self):
+        siggen_devices = self.devices.find_devices(self.devices.SIGGEN)
+        for device_id in siggen_devices:
+            device = self.devices.get_device(device_id)
+
+            output_signal = self.get_output_signal(device_id,
+                                                   output_id=None)
+
+            target_signal = device.siggen_pattern[device.clock_counter]
+            if output_signal == self.devices.HIGH and target_signal == self.devices.LOW:
+                device.outputs[None] = self.devices.FALLING
+            elif output_signal == self.devices.LOW and target_signal == self.devices.HIGH:
+                device.outputs[None] = self.devices.RISING
+
+            device.clock_counter = (device.clock_counter + 1) % len(device.siggen_pattern)
+
+    def execute_siggens(self, device_id):
+        return self.execute_clock(device_id)
+
     def execute_network(self):
         """Execute all the devices in the network for one simulation cycle.
 
@@ -358,9 +377,11 @@ class Network:
         nand_devices = self.devices.find_devices(self.devices.NAND)
         nor_devices = self.devices.find_devices(self.devices.NOR)
         xor_devices = self.devices.find_devices(self.devices.XOR)
+        siggen_devices = self.devices.find_devices(self.devices.SIGGEN)
 
         # This sets clock signals to RISING or FALLING, where necessary
         self.update_clocks()
+        self.update_siggens()
 
         # Number of iterations to wait for the signals to settle before
         # declaring the network unstable
@@ -378,6 +399,9 @@ class Network:
             # the clock
             for device_id in d_type_devices:  # execute DTYPE devices
                 if not self.execute_d_type(device_id):
+                    return False
+            for device_id in siggen_devices:  # complete clock executions
+                if not self.execute_siggens(device_id):
                     return False
             for device_id in clock_devices:  # complete clock executions
                 if not self.execute_clock(device_id):

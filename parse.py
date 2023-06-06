@@ -79,6 +79,8 @@ class Parser:
           self._parse_monitor()
         elif sym.type == Scanner.NAME:
           self._parse_connection(sym)
+        elif sym.type == Scanner.SIGGEN:
+          self._parse_SIGGEN()
 
         line_count += 1
     except ParsingError as e:
@@ -226,6 +228,36 @@ class Parser:
 
     self.__devices.make_clock(device_id=device_id, clock_half_period=clock_half_period)
 
+  @multiple
+  def _parse_SIGGEN(self):
+    device_id = self._parse_identifier()
+
+    self._parse_open_bracket()
+
+    class InvalidPattern(ValueError): pass
+
+    pattern = []
+
+    try:
+      sym = self.__scanner.get_symbol()
+
+      name_string = self.__names.get_name_string(sym.id)
+
+      for c in name_string:
+        if c == "0":
+          pattern.append(self.__devices.LOW)
+        elif c == "1":
+          pattern.append(self.__devices.HIGH)
+        else:
+          raise InvalidPattern
+
+    except InvalidPattern:
+      raise ParsingError("Expecting array containing 1 & 0", sym=sym)
+
+    self._parse_close_bracket()
+
+    self.__devices.make_siggen(device_id,
+                               pattern)
   @multiple
   def _parse_SWITCH(self):
     device_id = self._parse_identifier()

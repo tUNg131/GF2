@@ -1,0 +1,2 @@
+sig s1(1101)
+monitor s1

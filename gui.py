@@ -287,14 +287,15 @@ class Gui(wx.Frame):
         self.spin = wx.SpinCtrl(self, wx.ID_ANY, "10")
         self.run_button = wx.Button(self, wx.ID_ANY, "Run")
         self.continue_button = wx.Button(self, wx.ID_ANY, "Continue")
-        self.switch1_button = wx.Button(self, wx.ID_ANY, "On/Off")
+        self.switch1_button = wx.Button(self, wx.ID_ANY, "On")
+        self.switch0_button = wx.Button(self, wx.ID_ANY, "Off")
         self.set_monitor_button = wx.Button(self, wx.ID_ANY, "Monitor")
         self.zap_monitor_button = wx.Button(self, wx.ID_ANY, "Zap")
         self.help_button = wx.Button(self, wx.ID_ANY, "Help")
         self.quit_button = wx.Button(self, wx.ID_ANY, "Quit")
 
         self.switext = wx.StaticText(self, label = "Switch")
-        switch_names = ["swa","swb","swc"]
+        switch_names = ["sw1","swb","swc"]
         self.swicombobox = wx.ComboBox(self, choices = switch_names)
 
         self.sigtext = wx.StaticText(self, label = "Signal")
@@ -316,6 +317,7 @@ class Gui(wx.Frame):
         self.sigcombobox.Bind(wx.EVT_COMBOBOX, self.on_sigcombobox)
         self.moncombobox.Bind(wx.EVT_COMBOBOX, self.on_moncombobox)
         self.switch1_button.Bind(wx.EVT_BUTTON, self.on_switch1_button)
+        self.switch0_button.Bind(wx.EVT_BUTTON, self.on_switch0_button)
         self.set_monitor_button.Bind(wx.EVT_BUTTON, self.on_set_monitor_button)
         self.zap_monitor_button.Bind(wx.EVT_BUTTON, self.on_zap_monitor_button)
         self.quit_button.Bind(wx.EVT_BUTTON, self.on_quit_button)
@@ -380,6 +382,7 @@ class Gui(wx.Frame):
 
         side_sizer.Add(self.help_button, 1, wx.ALL, 5)
         side_sizer.Add(self.quit_button, 1, wx.ALL, 5)
+        side_sizer.Add(self.switch0_button, 1, wx.ALL, 5)
 
         self.SetSizeHints(600, 600)
         self.SetSizer(main_sizer)
@@ -392,6 +395,9 @@ class Gui(wx.Frame):
         self.monitors = monitors
         self.cycles_completed = 0
         self.switch_id = None
+        self.character = ""  # current character
+        self.line = ""  # current string entered by the user
+        self.cursor = 0  # cursor position
 
 
     def on_menu(self, event):
@@ -464,23 +470,38 @@ class Gui(wx.Frame):
         """Handle the event when the user clicks the switch1 button."""
         text = "On switch button pressed."
         self.canvas.render(text)
-        self.switch_command(1)
-
+        self.switch1_command(1)
     
-    def switch_command(self, state):
+    def on_switch0_button(self, event):
+        """Handle the event when the user clicks the switch0 button."""
+        text = "Off switch button pressed."
+        self.canvas.render(text)
+        self.switch0_command(1)
+
+
+    def switch1_command(self, state):
         #set the specified switch to the specified signal level
         if self.switch_id == None:
-            print("Error, please select a switch")
+            print("Please select a switch")
         else:
-            if self.devices is None:
-                print("There are no devices in your circuit???")
-            elif self.devices.set_switch(self.switch_id, state):
-                print("successfully set switch")
-            else:
-                print("Error! Invalid Switch.")
-    
+            self.device = self.devices.get_device(self.switch_id)
+            self.device.switch_state = 1
+            print("Successfully set switch.")
 
-    
+    def switch0_command(self, state):
+        #set the specified switch to the specified signal level
+        if self.switch_id == None:
+            print("Please select a switch")
+        else:
+            self.device = self.devices.get_device(self.switch_id)
+            self.device.switch_state = 0
+            print("Successfully reset switch.")
+          
+
+
+
+
+
     def on_swicombobox(self, event):
         """Handle the event when the user selects a switch."""
         self.switch_id = self.swicombobox.GetValue()
@@ -507,13 +528,13 @@ class Gui(wx.Frame):
         """Handle the event when the user clicks the set_monitor button."""
         text = "Set Monitor button pressed."
         self.canvas.render(text)
-        self.set_monitor_command()
+        self.monitor_command()
 
     def on_zap_monitor_button(self, event):
         """Handle the event when the user clicks the zap_monitor button."""
         text = "zap_monitor button pressed."
         self.canvas.render(text)
-        self.zap_monitor_command()
+        self.zap_command()
 
     def on_quit_button(self, event):
         """Handle the event when the user clicks the quit button."""

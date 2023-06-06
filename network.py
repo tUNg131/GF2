@@ -361,7 +361,21 @@ class Network:
 
             device.clock_counter = (device.clock_counter + 1) % len(device.siggen_pattern)
 
+    def update_rcs(self):
+        rc_devices = self.devices.find_devices(self.devices.RC)
+        for device_id in rc_devices:
+            device = self.devices.get_device(device_id)
+
+            if device.rc_counter < 0:
+                return
+            elif device.rc_counter == 0:
+                device.outputs[None] = self.devices.FALLING
+            device.rc_counter -= 1
+
     def execute_siggens(self, device_id):
+        return self.execute_clock(device_id)
+
+    def execute_rcs(self, device_id):
         return self.execute_clock(device_id)
 
     def execute_network(self):
@@ -378,10 +392,14 @@ class Network:
         nor_devices = self.devices.find_devices(self.devices.NOR)
         xor_devices = self.devices.find_devices(self.devices.XOR)
         siggen_devices = self.devices.find_devices(self.devices.SIGGEN)
+        rc_devices = self.devices.find_devices(self.devices.RC)
 
         # This sets clock signals to RISING or FALLING, where necessary
         self.update_clocks()
+
         self.update_siggens()
+
+        self.update_rcs()
 
         # Number of iterations to wait for the signals to settle before
         # declaring the network unstable
@@ -402,6 +420,9 @@ class Network:
                     return False
             for device_id in siggen_devices:  # complete clock executions
                 if not self.execute_siggens(device_id):
+                    return False
+            for device_id in rc_devices:  # complete clock executions
+                if not self.execute_rcs(device_id):
                     return False
             for device_id in clock_devices:  # complete clock executions
                 if not self.execute_clock(device_id):

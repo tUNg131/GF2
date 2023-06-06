@@ -81,6 +81,8 @@ class Parser:
           self._parse_connection(sym)
         elif sym.type == Scanner.SIGGEN:
           self._parse_SIGGEN()
+        elif sym.type == Scanner.RC:
+          self._parse_RC()
 
         line_count += 1
     except ParsingError as e:
@@ -258,6 +260,38 @@ class Parser:
 
     self.__devices.make_siggen(device_id,
                                pattern)
+
+  @multiple
+  def _parse_RC(self):
+    device_id = self._parse_identifier()
+
+    self._parse_open_bracket()
+
+    class InvalidTime(ValueError): pass
+
+    try:
+      # n
+      sym = self.__scanner.get_symbol()
+      if sym.type != Scanner.NUMBER:
+        raise InvalidTime
+      
+      name_string = self.__names.get_name_string(sym.id)
+
+      if name_string[0] == "0":
+        raise InvalidTime
+
+      clock_half_period = int(name_string)
+
+      if clock_half_period < 1:
+        raise InvalidTime
+
+    except InvalidTime:
+      raise ParsingError("Expecting a number > 0", sym=sym)
+
+    self._parse_close_bracket()
+
+    self.__devices.make_rc(device_id, clock_half_period)
+
   @multiple
   def _parse_SWITCH(self):
     device_id = self._parse_identifier()

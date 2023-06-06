@@ -107,7 +107,7 @@ class Devices:
         self.devices_list = []
 
         gate_strings = ["AND", "OR", "NAND", "NOR", "XOR"]
-        device_strings = ["CLOCK", "SWITCH", "DTYPE", "SIGGEN"]
+        device_strings = ["CLOCK", "SWITCH", "DTYPE", "SIGGEN", "RC"]
         dtype_inputs = ["CLK", "SET", "CLEAR", "DATA"]
         dtype_outputs = ["Q", "QBAR"]
 
@@ -120,7 +120,7 @@ class Devices:
         self.gate_types = [self.AND, self.OR, self.NAND, self.NOR,
                            self.XOR] = self.names.lookup(gate_strings)
         self.device_types = [self.CLOCK, self.SWITCH,
-                             self.D_TYPE, self.SIGGEN] = self.names.lookup(device_strings)
+                             self.D_TYPE, self.SIGGEN, self.RC] = self.names.lookup(device_strings)
         self.dtype_input_ids = [self.CLK_ID, self.SET_ID, self.CLEAR_ID,
                                 self.DATA_ID] = self.names.lookup(dtype_inputs)
         self.dtype_output_ids = [
@@ -248,6 +248,14 @@ class Devices:
         device = self.get_device(device_id)
         device.siggen_pattern = pattern
         self.cold_startup()
+
+    def make_rc(self, device_id, time):
+        self.add_device(device_id, self.RC)
+        device = self.get_device(device_id)
+        self.add_output(device.device_id,
+                        output_id=None,
+                        signal=self.HIGH)
+        device.rc_counter = time
 
     def make_gate(self, device_id, device_kind, no_of_inputs):
         """Make logic gates with the specified number of inputs."""

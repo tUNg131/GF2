@@ -75,6 +75,7 @@ class Scanner:
   MONITOR = 19
 
   SIGGEN = 20
+  RC = 21
 
   def __init__(self, path, names):
     """Open specified file and initialise reserved words and IDs."""
@@ -113,6 +114,8 @@ class Scanner:
       return self.CLOCK
     if w == "sig":
       return self.SIGGEN
+    if w == "rc":
+      return self.RC
     if w == "sw":
       return self.SWITCH
     if w == "and":

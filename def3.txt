@@ -1,0 +1,16 @@
+SW A(0), B(0), C(0)
+AND g1(2), g3(2), g4(2)
+OR g2(2), g5(2)
+
+A = g1.I1
+B = g1.I2
+B = g2.I1
+B = g3.I2
+C = g2.I2
+C = g3.I1
+g1 = g5.I1
+g2 = g4.I1
+g3 = g4.I2
+g4 = g5.I2
+
+MONITOR g5

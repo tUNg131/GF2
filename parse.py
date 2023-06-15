@@ -8,7 +8,6 @@ Classes
 -------
 Parser - parses the definition file and builds the logic network.
 """
-import itertools
 
 from scanner import Scanner
 
@@ -59,6 +58,7 @@ class Parser:
         if sym.type == Scanner.EOF:
           break
 
+        # Process each symbol based on its type
         if sym.type == Scanner.AND:
           self._parse_AND()
         elif sym.type == Scanner.NAND:
@@ -90,7 +90,7 @@ class Parser:
       print()
       print(f"{line_count} ", self.__scanner.get_line(line_count))
       if e.sym:
-        print(" "*len(f"{line_count} "), " " * e.sym.loc + "^")
+        print(" " * len(f"{line_count} "), " " * e.sym.loc + "^")
       return False
     return True
 
@@ -103,7 +103,7 @@ class Parser:
         if sym.type == Scanner.EOL:
           break
 
-        # ,
+        # Ensure multiple parsing of symbols separated by comma
         if sym.type != Scanner.COMMA:
           raise ParsingError("Expecting ','", sym=sym)
 

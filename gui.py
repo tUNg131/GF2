@@ -299,11 +299,12 @@ class Gui(wx.Frame):
         self.swicombobox = wx.ComboBox(self, choices = switch_names)
 
         self.sigtext = wx.StaticText(self, label = "Signal")
-        signal_names = ["siga","sigb","sigc"]
+        signal_names = ["sw1","clk1","sigc"]
+        
         self.sigcombobox = wx.ComboBox(self, choices = signal_names)
 
         self.montext = wx.StaticText(self, label = "Monitor")
-        monitor_names = ["mona","monb","monc"]
+        monitor_names = ["k", "sw1", "clk1", "sigc"]
         self.moncombobox = wx.ComboBox(self, choices = monitor_names)
 
 
@@ -327,6 +328,8 @@ class Gui(wx.Frame):
         side_sizer = wx.BoxSizer(wx.VERTICAL)
         rc_sizer = wx.BoxSizer(wx.HORIZONTAL)
         cycle_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        onoff_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        helpquit_sizer = wx.BoxSizer(wx.HORIZONTAL)
         sim_sizer = wx.StaticBoxSizer(wx.StaticBox(self, id=wx.ID_ANY, label='Simulation'), wx.VERTICAL)
         #swi_sizer = wx.BoxSizer(wx.HORIZONTAL)
         #sig_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -371,18 +374,24 @@ class Gui(wx.Frame):
 
         side_sizer.Add(sm_sizer,1,wx.ALL,5)
         """
-
+        onoff_sizer.Add(self.switch1_button)
+        onoff_sizer.Add(self.switch0_button)
         
-        smgrid_sizer.AddMany([self.switext, self.swicombobox, self.switch1_button,
+        smgrid_sizer.AddMany([self.switext, self.swicombobox, onoff_sizer,
                           self.sigtext, self.sigcombobox, self.set_monitor_button,
                           self.montext, self.moncombobox, self.zap_monitor_button])
         #side_sizer.Add(smgrid_sizer,1,wx.ALL,5)
         sm_sizer.Add(smgrid_sizer,1,wx.ALL,5)
         side_sizer.Add(sm_sizer,1,wx.ALL,5)
 
-        side_sizer.Add(self.help_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.quit_button, 1, wx.ALL, 5)
-        side_sizer.Add(self.switch0_button, 1, wx.ALL, 5)
+
+        helpquit_sizer.Add(self.help_button)
+        helpquit_sizer.Add(self.quit_button)
+
+        side_sizer.Add(helpquit_sizer)
+        #side_sizer.Add(self.help_button, 1, wx.ALL, 5)
+        #side_sizer.Add(self.quit_button, 1, wx.ALL, 5)
+        #side_sizer.Add(self.switch0_button, 1, wx.ALL, 5)
 
         self.SetSizeHints(600, 600)
         self.SetSizer(main_sizer)
@@ -395,6 +404,8 @@ class Gui(wx.Frame):
         self.monitors = monitors
         self.cycles_completed = 0
         self.switch_id = None
+        self.signal_id = None
+        self.monitor_id = None
         self.character = ""  # current character
         self.line = ""  # current string entered by the user
         self.cursor = 0  # cursor position
@@ -484,8 +495,8 @@ class Gui(wx.Frame):
         if self.switch_id == None:
             print("Please select a switch")
         else:
-            self.device = self.devices.get_device(self.switch_id)
-            self.device.switch_state = 1
+            print(self.switch_id)
+            self.devices.set_switch(self.names.query(self.switch_id), 1)
             print("Successfully set switch.")
 
     def switch0_command(self, state):
@@ -493,14 +504,9 @@ class Gui(wx.Frame):
         if self.switch_id == None:
             print("Please select a switch")
         else:
-            self.device = self.devices.get_device(self.switch_id)
-            self.device.switch_state = 0
+            print(self.switch_id)
+            self.devices.set_switch(self.names.query(self.switch_id), 0)
             print("Successfully reset switch.")
-          
-
-
-
-
 
     def on_swicombobox(self, event):
         """Handle the event when the user selects a switch."""
@@ -529,12 +535,68 @@ class Gui(wx.Frame):
         text = "Set Monitor button pressed."
         self.canvas.render(text)
         self.monitor_command()
+    
+    def read_signal_name(self):
+        """Return the device and port IDs of the current signal name.
+
+        Return None if either is invalid.
+        """
+        device_id = self.names.query(self.signal_id)
+        if device_id is None:
+            return None
+        elif self.character == ".":
+            port_id = self.names.query(self.signal_id)
+            if port_id is None:
+                return None
+        else:
+            port_id = None
+        return [device_id, port_id]
+    
+    def read_monitor_name(self):
+        """Return the device and port IDs of the current signal name.
+
+        Return None if either is invalid.
+        """
+        device_id = self.names.query(self.monitor_id)
+        if device_id is None:
+            return None
+        elif self.character == ".":
+            port_id = self.names.query(self.monitor_id)
+            if port_id is None:
+                return None
+        else:
+            port_id = None
+        return [device_id, port_id]
+    
+    def monitor_command(self):
+        print(self)
+        monitor = self.read_signal_name()
+        if monitor == None:
+            print("Please select a device to monitor")
+        else:
+            [device, port] = monitor
+            monitor_error = self.monitors.make_monitor(device, port,
+                                                       self.cycles_completed)
+            if monitor_error == self.monitors.NO_ERROR:
+                print("Successfully made monitor.")
+            else:
+                print("Error! Could not make monitor.")
+
 
     def on_zap_monitor_button(self, event):
         """Handle the event when the user clicks the zap_monitor button."""
         text = "zap_monitor button pressed."
         self.canvas.render(text)
         self.zap_command()
+    
+    def zap_command(self):
+        monitor = self.read_monitor_name()
+        if monitor is not None:
+            [device, port] = monitor
+            if self.monitors.remove_monitor(device, port):
+                print("Successfully zapped monitor")
+            else:
+                print("Error! Could not zap monitor.")
 
     def on_quit_button(self, event):
         """Handle the event when the user clicks the quit button."""
